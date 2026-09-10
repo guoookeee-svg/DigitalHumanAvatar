@@ -36,6 +36,26 @@
     }
   },
   "interaction_mode": "solo",
+  "speaker": {
+    "enabled": true,
+    "match_threshold": 0.55,
+    "session_threshold": 0.65,
+    "self_filter_enabled": true,
+    "self_filter_threshold": 0.55,
+    "min_audio_ms": 600,
+    "min_speakers_for_annotate": 2
+  },
+  "memory": {
+    "min_score": 0.35,
+    "max_entries": 1000,
+    "decay_weight": 0.25,
+    "decay_half_life_days": 30,
+    "min_len_user": 6,
+    "min_len_assistant": 6,
+    "filter_greetings": true,
+    "rerank_enabled": false,
+    "cache_ttl": 30
+  },
   "meeting": {
     "owner_name": "<owner_name>",
     "owner_speaker": "<owner_speaker>",

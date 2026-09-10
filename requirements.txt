@@ -27,6 +27,7 @@ flask
 aiohttp
 aiohttp_cors
 aiortc
+av                       # WebRTC 音视频帧（server/webrtc 及 avatars 必需）
 websockets==12.0
 edge_tts
 
@@ -48,3 +49,8 @@ pipecat
 regex
 more-itertools
 omegaconf
+
+# ─── 可选（按需启用；默认不装不阻塞运行）────────────
+# onnxruntime                # 仅当用 ultralight 数字人模型时（模型导出/onnx 推理）
+# azure-cognitiveservices-speech  # 仅当用 azuretts 时
+# dashscope                  # 若用 qwentts 等阿里系 TTS 时
