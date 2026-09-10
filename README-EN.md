@@ -161,10 +161,22 @@ cp .env.example .env
 
 ### Model Files
 
+**Download links** (from the original lipku/LiveTalking project):
+
+| Cloud drive | Link |
+|-------------|------|
+| Quark Cloud | <https://pan.quark.cn/s/83a750323ef0> |
+| Google Drive | <https://drive.google.com/drive/folders/1FOC_MD6wdogyyX_7V1d4NDIO7P9NlSAJ?usp=sharing> |
+
 The following models are NOT in this repo; download and place them yourself:
 
-- `models/wav2lip.pth` — Wav2Lip lip-sync model weights (required)
-- Lip-sync / avatar assets, place under `data/avatars/`
+- `wav2lip256.pth` → copy to the project `models/` directory and **rename to `wav2lip.pth`** (required)
+- `wav2lip256_avatar1.tar.gz` → extract and copy the whole folder to `data/avatars/`
+- Avatar assets, place under `data/avatars/<avatar_id>/`; **three parts are required** (missing any of them will cause startup failure):
+  - `full_imgs/` — raw face video frame images (named by sequence, e.g. `0.jpg`, `1.jpg`…)
+  - `face_imgs/` — cropped face images (one-to-one with `full_imgs`)
+  - `coords.pkl` — face coordinate file
+  - Where `avatar_id` matches `avatar_id` in `config.yaml` (e.g. `wav2lip256_avatar1`)
 - FunASR models (SenseVoice / CAM++ / fsmn-vad / paraformer), cached under `MODELSCOPE_CACHE`, downloaded automatically on first run
 - TTS reference audio: `REF_FILE` in `config.yaml` (e.g. `ref_audio.wav`) is the digital human's voice reference (16kHz mono wav), **must be provided and placed at the corresponding path** for GPT-SoVITS voice cloning
 

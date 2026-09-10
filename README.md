@@ -162,9 +162,17 @@ cp .env.example .env
 
 ### 模型文件
 
+**下载地址**（来自原 lipku/LiveTalking 项目）：
+
+| 网盘 | 地址 |
+|------|------|
+| 夸克云盘 | <https://pan.quark.cn/s/83a750323ef0> |
+| Google Drive | <https://drive.google.com/drive/folders/1FOC_MD6wdogyyX_7V1d4NDIO7P9NlSAJ?usp=sharing> |
+
 需要以下模型（不在仓库内，需自行下载放置）：
 
-- `models/wav2lip.pth` — Wav2Lip 嘴型模型权重（必装）
+- `wav2lip256.pth` → 拷贝到项目 `models/` 目录，**重命名为 `wav2lip.pth`**（必装）
+- `wav2lip256_avatar1.tar.gz` → 解压后整个文件夹拷贝到 `data/avatars/` 下
 - 形象素材，放在 `data/avatars/<avatar_id>/` 下，**需包含三部分**（缺失会导致启动失败）：
   - `full_imgs/` — 原始人脸视频帧图片（按序号命名，如 `0.jpg`、`1.jpg`…）
   - `face_imgs/` — 裁剪后的人脸图片（与 full_imgs 一一对应）
