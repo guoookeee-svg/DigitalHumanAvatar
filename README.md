@@ -218,6 +218,16 @@ cp .env.example .env
 #   CUDA_VISIBLE_DEVICES → 用哪张 GPU
 ```
 
+> **务必**从模板复制 `llm_config.json` 和 `persona.json`（直接使用模板即可，首次运行可再调整）：
+>
+> ```bash
+> cp llm_config.json.example llm_config.json
+> cp persona.json.example persona.json
+> ```
+>
+> 否则 LLM 模式 / 人设 / 会议替会配置会缺失，数字人可能无法正常对话。
+> 另外可在 `llm_config.json` 里配 `interaction_mode`（solo/meeting/recording）与 `speaker`/`memory` 段参数。
+
 ### 4. 放置模型与素材
 
 - 把 `wav2lip.pth` 放到 `models/wav2lip.pth`
