@@ -149,6 +149,7 @@ cp .env.example .env
 - `models/wav2lip.pth` — Wav2Lip 嘴型模型权重（必装）
 - 嘴型/形象素材，放在 `data/avatars/` 下
 - FunASR 模型（SenseVoice / CAM++ / fsmn-vad / paraformer），由 `MODELSCOPE_CACHE` 指定缓存目录，首次运行自动下载
+- TTS 参考音频：`config.yaml` 中 `REF_FILE`（如 `ref_audio.wav`）指向数字人的音色参考音频（16kHz 单声道 wav），**需自行准备并放到对应路径**，用于 GPT-SoVITS 音色克隆
 
 ### 启动
 
