@@ -73,6 +73,18 @@ check_env() {
     if [ ! -f "$SOVITS_API" ]; then
         warn "未找到 GPT-SoVITS api.py：$SOVITS_API（将跳过 TTS 启动）"
     fi
+
+    # ── 模型 / 形象素材检查（缺失会启动失败，提前给出明确提示）──
+    if [ ! -f "$APP_DIR/models/wav2lip.pth" ]; then
+        warn "未找到嘴型模型 models/wav2lip.pth，请下载后放到 models/ 目录（否则数字人无法驱动嘴型）"
+    fi
+    # 从 config.yaml 读取 avatar_id（不存在则用默认值）
+    local av_id
+    av_id="$(grep -E '^avatar_id:' "$APP_DIR/config.yaml" 2>/dev/null | awk '{print $2}' | tr -d ' \r\n')"
+    av_id="${av_id:-wav2lip256_avatar1}"
+    if [ ! -f "$APP_DIR/data/avatars/$av_id/coords.pkl" ]; then
+        warn "未找到形象素材 data/avatars/$av_id/coords.pkl，请放置完整形象素材（含 full_imgs/、face_imgs/、coords.pkl），否则启动会失败"
+    fi
 }
 
 start_sovits() {

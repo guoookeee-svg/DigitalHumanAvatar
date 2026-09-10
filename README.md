@@ -165,7 +165,11 @@ cp .env.example .env
 需要以下模型（不在仓库内，需自行下载放置）：
 
 - `models/wav2lip.pth` — Wav2Lip 嘴型模型权重（必装）
-- 嘴型/形象素材，放在 `data/avatars/` 下
+- 形象素材，放在 `data/avatars/<avatar_id>/` 下，**需包含三部分**（缺失会导致启动失败）：
+  - `full_imgs/` — 原始人脸视频帧图片（按序号命名，如 `0.jpg`、`1.jpg`…）
+  - `face_imgs/` — 裁剪后的人脸图片（与 full_imgs 一一对应）
+  - `coords.pkl` — 人脸坐标文件
+  - 其中 `avatar_id` 对应 `config.yaml` 的 `avatar_id`（如 `wav2lip256_avatar1`）
 - FunASR 模型（SenseVoice / CAM++ / fsmn-vad / paraformer），由 `MODELSCOPE_CACHE` 指定缓存目录，首次运行自动下载
 - TTS 参考音频：`config.yaml` 中 `REF_FILE`（如 `ref_audio.wav`）指向数字人的音色参考音频（16kHz 单声道 wav），**需自行准备并放到对应路径**，用于 GPT-SoVITS 音色克隆
 
