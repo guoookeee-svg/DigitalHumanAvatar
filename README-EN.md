@@ -35,6 +35,16 @@ The system splits interaction into three modes, switchable via the sidebar or `/
 - Global voiceprint library (`data/speakers.json`) persists; once named, the same person is recognized on next appearance
 - The digital human's own voice is **echo-filtered** (`is_avatar_voice`) to prevent self-interruption
 
+> ⚠️ **Known limitations**: Real-time speaker identification is based on the CAM++ voiceprint model and **has limited accuracy**. It is prone to misjudgment in these cases:
+> - **Short utterances / frequent interruptions**: the same person's short phrases may be split into multiple "Speaker N" labels (unstable vectors)
+> - **Single-person conversation**: speaker differentiation is unnecessary and misjudgment pollutes the labels
+> - **Ambient noise / digital-human echo**: the digital human's own voice may be mislabeled as a speaker
+>
+> Suggestions:
+> - Use **solo mode** for **single-person conversations** (no speaker differentiation needed) to avoid mislabeling
+> - For **multi-person meetings**, use longer, continuous speech; if recognition is off, **rename/register** temporary speakers, or run **offline clustering refinement** (`speaker_diarize.py`) on the full audio
+> - To check echo handling, inspect `GAIN` in `web/asr/main.js` and `self_filter_threshold` in `speaker_store.py`
+
 ### 3. Local SenseVoice ASR
 
 - Built-in **FunASR / SenseVoice** local recognition, no internet required
