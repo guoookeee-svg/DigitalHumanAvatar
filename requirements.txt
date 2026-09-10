@@ -1,58 +1,50 @@
+# ─── 基础 ─────────────────────────────────────────
 python-dotenv
 pyyaml
-#torch-ema
-##ninja
-#trimesh
-#opencv-python
-#tensorboardX
-numpy 
-#pandas
+numpy
 tqdm
-#matplotlib
-#PyMCubes
-#rich
-#dearpygui
-#packaging
 scipy
-#scikit-learn
+pandas
+requests
 
-#face_alignment
-#python_speech_features
-##numba
+# ─── 音频处理 ─────────────────────────────────────
 resampy
-#pyaudio
 soundfile==0.12.1
+librosa
 einops
-#configargparse
+numba
 
-#lpips==0.1.3
-#imageio-ffmpeg
-
-transformers #==4.46.2
-edge_tts
-flask
-#flask_sockets
+# ─── 数字人/图像/视频 ─────────────────────────────
+torch
+torchvision
 opencv-python-headless
-aiortc
-aiohttp_cors
+Pillow
+imageio
+imageio-ffmpeg
 
-#ffmpeg-python
-#omegaconf
+# ─── Web 服务 ─────────────────────────────────────
+flask
+aiohttp
+aiohttp_cors
+aiortc
+websockets==12.0
+edge_tts
+
+# ─── ML / LLM ────────────────────────────────────
+transformers
 diffusers
 accelerate
-
-librosa
 openai
-#websocket-client
-websockets==12.0
 dashscope
-#gradio_client
-#azure-cognitiveservices-speech
 
-#typeguard==2.13.3
-#onnxruntime-gpu
+# ─── 语音识别 / 说话人（本地 ASR + 声纹）───────────
+funasr
+modelscope
 
-# Local ASR server (SenseVoice/FunASR) — Issue #604
-# Optional: remove these lines if you don't need local ASR
-#funasr
-#modelscope
+# ─── VAD 停检测（SmartTurn）──────────────────────
+pipecat
+
+# ─── 其他 ─────────────────────────────────────────
+regex
+more-itertools
+omegaconf

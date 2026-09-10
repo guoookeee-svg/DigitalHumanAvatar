@@ -127,6 +127,14 @@
 - 一张 **NVIDIA GPU**（嘴型推理 + 本地 ASR），建议显存 ≥ 8GB
 - 本地 **vLLM** 端点（提供 `/v1/chat/completions`）或外部 Agent 服务
 
+### 可选的 GPT-SoVITS TTS
+
+本仓库默认 TTS 用 **GPT-SoVITS**（见 `config.yaml` 的 `tts: gpt-sovits`）。它是**独立的外部服务**，不包含在本仓库内，需要单独部署，并放在本仓库的**上一级目录**（`../GPT-SoVITS`），这样 `start_new.sh` 才能找到它。
+
+- 部署 GPT-SoVITS 后，`start_new.sh` 会自动启动它（端口 9880）。
+- 若未部署 GPT-SoVITS，脚本会提示并跳过 TTS，主服务仍能启动，但**数字人没有声音**（可改用 `edge_tts` 等，修改 `config.yaml` 的 `tts` 项即可）。
+- 需提供音色参考音频（`config.yaml` 的 `REF_FILE`，16kHz 单声道 wav）。
+
 ### 安装
 
 ```bash
