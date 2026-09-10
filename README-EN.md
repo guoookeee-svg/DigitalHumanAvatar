@@ -2,231 +2,242 @@
     <img src="./assets/LiveTalking-logo.png" align="middle" width="600"/>
 </p>
 
-English | [中文版](./README.md)
+[中文版](./README.md) | English
 
 <p align="center">
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
-    <a href="https://github.com/lipku/LiveTalking/releases"><img src="https://img.shields.io/github/v/release/lipku/LiveTalking?color=ffa"></a>
     <a href=""><img src="https://img.shields.io/badge/python-3.10+-aff.svg"></a>
     <a href=""><img src="https://img.shields.io/badge/os-linux%2C%20win%2C%20mac-pink.svg"></a>
-    <a href="https://github.com/lipku/LiveTalking/graphs/contributors"><img src="https://img.shields.io/github/contributors/lipku/LiveTalking?color=c4f042&style=flat-square"></a>
-</p>
-<p align="center">
-<a href="https://trendshift.io/repositories/12565" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12565" alt="lipku%2FLiveTalking | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-A real-time interactive streaming digital human engine enabling synchronized audio-video conversation, widely adopted in commercial applications.
+A real-time interactive streaming digital human engine with synchronized audio-video conversation.
 
-**Demos**: [wav2lip](https://youtu.be/-ss0H8qLr7E) | [ernerf](https://www.bilibili.com/video/BV1G1421z73r/) | [musetalk](https://youtu.be/vzUMruoZlxc/)
-
-Domestic Mirror: [Gitee](https://gitee.com/lipku/LiveTalking) | [GitCode](https://gitcode.com/lipku/LiveTalking)
+**This repository is a heavily enhanced fork of [lipku/LiveTalking](https://github.com/lipku/LiveTalking)**. It adds **three interaction modes**, **real-time voiceprint speaker diarization**, **local SenseVoice ASR**, **TTS sentence-pipeline prefetch**, and **meeting response gating**, specifically optimized for **multi-person meeting attendance / recording** scenarios.
 
 ---
 
-## Features
-1. Supports multiple digital human models: ernerf, musetalk, wav2lip, Ultralight-Digital-Human
-2. Supports voice cloning
-3. Supports interrupting the digital human while speaking
-4. Supports full-body video stitching
-5. Supports WebRTC, RTMP, and virtual camera output
-6. Supports action choreography: plays custom videos when not speaking
-7. Supports multi-concurrency
-8. Supports custom digital human avatars
-9. Provides frontend API integration
+## ✨ Core Features
+
+### 1. Three Interaction Modes (Chat / Meeting / Recording)
+
+The system splits interaction into three modes, switchable via the sidebar or `/api/mode`:
+
+| Mode | Description |
+|------|-------------|
+| **Chat (solo)** | Free-form one-on-one conversation; the digital human responds to anyone, no identity restriction |
+| **Meeting (meeting)** | The digital human attends as the user's delegate; **responds only when addressed or asked directly**, otherwise only records |
+| **Recording (recording)** | Pure meeting transcription + speaker labeling; the digital human stays silent, only records |
+
+### 2. Real-time Voiceprint Speaker Diarization
+
+- Uses **CAM++ (192-dim voiceprint vectors)** to identify who said each segment in real time
+- In-session **temporary centers** automatically group the same person as "Speaker N", cross-session naming can be stored persistently (click the label next to a message to rename)
+- Global voiceprint library (`data/speakers.json`) persists; once named, the same person is recognized on next appearance
+- The digital human's own voice is **echo-filtered** (`is_avatar_voice`) to prevent self-interruption
+
+### 3. Local SenseVoice ASR
+
+- Built-in **FunASR / SenseVoice** local recognition, no internet required
+- **Silero VAD** auto end-of-turn detection + **SmartTurn** semantic verification, avoids splitting one sentence into two
+- VAD detecting the user speaking triggers an **interrupt** (the digital human stops immediately)
+- Supports 2-pass streaming / offline recognition; speaker judgment runs in parallel with ASR without blocking
+
+### 4. TTS Sentence-Pipeline Prefetch
+
+- Fixes "choppy speech": prefetches the next sentence's synthesis request in the gaps between pushing frames
+- Eliminates silent gaps between sentences for smooth playback
+- Checks if the user is speaking (`is_user_speaking`) before playback to avoid talking over the user
+
+### 5. Meeting Response Gating
+
+Inserts a `decide_response()` gate before the `/human` route calls the LLM:
+- **Address detection**: messages containing `address_keywords` (e.g. "数字人", "王总") → must respond
+- **Direct question patterns**: regex matches like "你怎么看", "总结一下" → must respond
+- **Semantic interjection layer**: reserved interface (`proactive_level`), off by default
+- Non-passing utterances are still written to the conversation log (with speaker labels) for review and offline refinement
+
+### 6. Offline Speaker Clustering Refinement
+
+After a meeting, run global clustering (`speaker_diarize.py`) on the entire audio using CAM++ embeddings + scipy hierarchical clustering to correct mis-merged/mis-split speakers from real-time recognition, and register temporary speakers into the global voiceprint library.
 
 ---
 
-## Usage Scenarios
-
-LiveTalking leverages real-time streaming digital human technology to drive virtual avatars via text or voice, combined with LLM for intelligent conversation. Suitable for the following scenarios:
+## 🖥 Usage Scenarios
 
 | Scenario | Description |
 |----------|-------------|
-| **Virtual Streamer / Live Commerce [LiveStream](https://github.com/lipku/livestream)** | 24/7 unmanned live streaming with LLM-generated sales scripts and action choreography for natural performance |
-| **AI Digital Human Customer Service** | Integrate enterprise knowledge bases for real-time voice Q&A with interruption support |
-| **Online Education / Training** | Digital teacher分身 for course recording, or API-driven digital instructor for real-time lectures |
-| **Intelligent Voice Assistant** | Pair with smart speakers or apps, calling the `/human` API to drive digital human voice interactions |
-| **Large Screen Presentation** | Digital human presenter for exhibition halls, event venues, and other content narration scenarios |
-| **Batch Short Video Creation** | Submit scripts in batch via API to generate digital human videos without real-person filming, using `/human` + `/record` APIs |
+| **Virtual Streamer / Live Commerce** | 24/7 unmanned live streaming with LLM-generated scripts |
+| **AI Digital Human Customer Service** | Knowledge base + real-time voice Q&A with interruption support |
+| **Online Education / Training** | Teacher digital avatar for course recording or real-time lectures |
+| **Intelligent Voice Assistant** | Call the `/human` API to drive digital human voice interactions |
+| **Meeting Attendance / Recording** | Digital human represents the user in meetings, speaking only when addressed; or pure transcription/recording |
 
-**Core Flow**: User input (text/audio) → LLM response (optional) → TTS speech synthesis → Real-time lip-sync → Audio/video streaming output
+**Core Flow**: User voice/text → local ASR → voiceprint speaker judgment → interaction gating → LLM reply → TTS synthesis → real-time lip-sync → audio/video streaming output
 
 ---
 
-## 1. Installation
+## 📁 Project Structure
 
-Tested on Ubuntu 24.04, Python 3.12, PyTorch 2.9.1, CUDA 12.8.
+```
+.
+├── app.py                  # Service entry (aiohttp)
+├── config.yaml             # Service config (fps/transport etc.)
+├── config.py               # CLI arg + YAML config loading
+├── registry.py             # Plugin registry (tts/avatar/output etc.)
+├── start_new.sh            # One-click start / restart script
+├── persona.json.example   # Persona config template (copy to persona.json)
+├── llm_config.json.example # LLM / interaction mode / meeting config template (copy to llm_config.json)
+├── agent/                  # LLM interaction subsystem ("dialogue brain")
+│   ├── llm_router.py       # LLM mode dispatch (openai/agent) + interaction mode API
+│   ├── llm_openai.py       # OpenAI-compatible LLM implementation (vLLM)
+│   ├── llm.py              # Agent external service mode implementation
+│   ├── meeting_gate.py     # Three-mode response gating (decide_response)
+│   ├── speaker_store.py    # Real-time voiceprint recognition + voiceprint library
+│   ├── speaker_diarize.py  # Offline speaker clustering refinement
+│   ├── conversation_store.py # Conversation / message storage + active conversation pointer
+│   └── memory_store.py     # RAG memory retrieval / storage
+├── server/
+│   ├── asr_server.py       # Local ASR WebSocket (VAD + end-of-turn + voiceprint)
+│   ├── session_manager.py  # Session management
+│   ├── routes.py           # HTTP/WS routes
+│   └── ...
+├── tts/
+│   ├── base_tts.py         # TTS base + sentence-pipeline prefetch
+│   ├── sovits.py           # GPT-SoVITS implementation (incl. play_stream)
+│   └── ...                 # edge/azure/cosyvoice/xtts etc.
+├── avatars/
+│   ├── base_avatar.py      # Digital human base (flush_talk / is_speaking)
+│   ├── wav2lip_avatar.py   # Wav2Lip lip-sync
+│   └── ...
+└── web/
+    ├── console.html        # Three-mode console (chat/meeting/recording + PIP + ASR capture dock)
+    ├── asr/                # ASR frontend capture page
+    └── js/                 # app/chat/meeting/record/settings/speaker/webrtc
+```
 
-### 1.1 Install Dependencies
+---
+
+## 🚀 Quick Start
+
+### Requirements
+
+- **Python 3.10+**
+- **Linux / Windows / macOS**
+- An **NVIDIA GPU** (lip-sync inference + local ASR), ≥ 8GB VRAM recommended
+- A local **vLLM** endpoint (serving `/v1/chat/completions`) or an external Agent service
+
+### Optional GPT-SoVITS TTS
+
+This repository uses **GPT-SoVITS** as the default TTS (see `tts: gpt-sovits` in `config.yaml`). It is a **separate external service** not bundled here; deploy it and place it in the **parent directory** (`../GPT-SoVITS`) so `start_new.sh` can find it.
+
+- Once deployed, `start_new.sh` will start it automatically (port 9880).
+- If GPT-SoVITS is not deployed, the script warns and skips TTS; the main service still starts, but **the digital human has no audio** (you can switch to `edge_tts` etc. by editing `config.yaml`'s `tts` entry).
+- A voice reference audio is required (`REF_FILE` in `config.yaml`, 16kHz mono wav).
+
+### Install
 
 ```bash
-git clone https://github.com/lipku/LiveTalking.git 
-conda create -n livetalking python=3.12
-conda activate livetalking
-# If CUDA version is not 12.8 (check via nvidia-smi), install the corresponding PyTorch version(https://pytorch.org/get-started/previous-versions)
-pip install torch==2.9.1 torchvision==0.24.1 torchaudio==2.9.1 --index-url https://download.pytorch.org/whl/cu128
-cd LiveTalking
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Configure environment (copy template and fill in your config)
+cp .env.example .env
+# Edit .env, fill in LLM endpoint / API Key etc.
 ```
 
-Installation FAQ: <https://doc.livetalking.ai/en/docs/faq/>
+### Model Files
 
-Linux CUDA environment setup: <https://zhuanlan.zhihu.com/p/674972886>
+The following models are NOT in this repo; download and place them yourself:
 
----
+- `models/wav2lip.pth` — Wav2Lip lip-sync model weights (required)
+- Lip-sync / avatar assets, place under `data/avatars/`
+- FunASR models (SenseVoice / CAM++ / fsmn-vad / paraformer), cached under `MODELSCOPE_CACHE`, downloaded automatically on first run
+- TTS reference audio: `REF_FILE` in `config.yaml` (e.g. `ref_audio.wav`) is the digital human's voice reference (16kHz mono wav), **must be provided and placed at the corresponding path** for GPT-SoVITS voice cloning
 
-## 2. Quick Start
-
-### 2.1 Download Models
-
-| Source | Link |
-|--------|------|
-| Quark Cloud | <https://pan.quark.cn/s/83a750323ef0> |
-| Google Drive | <https://drive.google.com/drive/folders/1FOC_MD6wdogyyX_7V1d4NDIO7P9NlSAJ?usp=sharing> |
-
-1. Copy `wav2lip256.pth` to the project's `models/` directory and rename it to `wav2lip.pth`
-2. Extract `wav2lip256_avatar1.tar.gz` and copy the entire extracted folder to `data/avatars/`
-
-### 2.2 Start the Server
+### Start
 
 ```bash
-python app.py --transport webrtc --model wav2lip --avatar_id wav2lip256_avatar1
+./start_new.sh          # Start (auto-loads .env, stops old processes, health check)
+./start_new.sh stop     # Stop
+./start_new.sh status   # View status
+./start_new.sh log      # Tail logs live
 ```
 
-> **Note**: The server must open ports TCP:8010, UDP:1-65536
+Or manually:
 
-### 2.3 Client Access
+```bash
+source .venv/bin/activate
+python app.py
+```
 
-| Method | Description |
-|--------|-------------|
-| Browser | Open `http://serverip:8010/index.html`, click "Start Connection" to play the digital human video, then enter text and submit |
-| API | See [API Docs](docs/api.md) for HTTP-based integration |
-| Desktop App | Download: <https://pan.quark.cn/s/d7192d8ac19b> |
-
-### 2.4 Web Pages
-
-| Page | URL | Description |
-|------|-----|-------------|
-| Home | `/index.html` | WebRTC connection + text/audio driver + recording control |
-| Avatar Creator | `/avatar.html` | Upload video to auto-generate digital human avatars |
-| Admin Console | `/admin.html` | Real-time session monitoring & global configuration |
-
-<img src="./assets/index.jpg" align="middle"/>
-
-### 2.5 Quick Experience
-
-1. Create an instance with a cloud image to run instantly: [UCloud Image](https://www.compshare.cn/images/4458094e-a43d-45fe-9b57-de79253befe4?referral_code=3XW3852OBmnD089hMMrtuU&ytag=GPU_GitHub_livetalking)  
-2. Windows Integrated Package <https://pan.quark.cn/s/a040bf5cb065>
-3. Commercial Version Demo URL <https://www.livetalking.top>
-
-### 2.6 Documentation
-<https://doc.livetalking.ai/en>
+Then access: `http://<serverip>:8010/console.html`
 
 ---
 
-## 3. Architecture
+## ⚙️ Configuration
 
-### Dataflow Diagram
+### `.env` (environment variables)
 
-<img src="./assets/dataflow.png" align="middle" />
-
-### Layer Overview
-
-**API Layer**
-- `/human`: Accepts text, supporting echo (direct playback) and chat (LLM conversation) modes
-- `/humanaudio`: Accepts audio files for direct playback
-- Each connection is assigned a unique `sessionid`, supporting multi-user concurrency
-
-**Logic Layer**
-- **LLM Engine**: Integrates with models like Qwen to generate conversational responses
-- **TTS Engine**: Modular design supporting EdgeTTS, GPT-SoVITS, CosyVoice, Tencent Cloud, and more
-- **Feature Extraction**: Synchronously extracts acoustic features (e.g., Mel spectrograms) for lip-sync inference
-
-**Rendering Layer**
-- **Model Inference**: Uses deep learning models (Wav2Lip, MuseTalk, etc.) to generate lip-sync frames from audio features
-- **Post-Processing**: Smoothly overlays the generated mouth region back onto the original high-definition video
-
-**Streaming Layer**
-- **WebRTC**: Low-latency browser-based streaming
-- **RTMP**: Standard live streaming protocol, supports pushing to platforms like Bilibili/YouTube
-- **Virtual Camera**: Outputs as a system camera device
-
-**Plugin System**
-- Decentralized registration mechanism based on [registry.py](registry.py), allowing developers to extend TTS, Avatar, and Output modules
-
----
-
-## 4. API Documentation
-
-| Document | Description |
+| Variable | Description |
 |----------|-------------|
-| [docs/api.md](docs/api.md) | General API — WebRTC, text/audio driver, recording, action choreography |
-| [docs/avatar_api.md](docs/avatar_api.md) | Avatar Generation API — create tasks, query progress, delete tasks |
-| [docs/admin_api.md](docs/admin_api.md) | Admin API — global config, session monitoring, force stop |
+| `LLM_API_KEY` | API key of the local vLLM |
+| `LLM_BASE_URL` | Local vLLM endpoint, e.g. `http://<your-vllm-host>:8080/v1` |
+| `LLM_MODEL` | Model name, e.g. `ds-v4-flash` |
+| `QWENPAW_*` | External Agent service config (optional, agent mode) |
+| `CUDA_VISIBLE_DEVICES` | GPU to use (avoid the cards occupied by vLLM) |
+| `MODELSCOPE_CACHE` | FunASR model cache directory |
+
+### `llm_config.json` (LLM & interaction mode)
+
+- `mode`: `openai` (local vLLM) / `agent` (external Agent service)
+- `interaction_mode`: `solo` / `meeting` / `recording`
+- `meeting`: meeting config (`owner_name` / `owner_speaker` / `address_keywords` / `question_patterns` / `proactive_level`)
+- `openai` / `agent`: endpoint & model config for the corresponding mode
+
+### `persona.json` (persona)
+
+- `system_prompt`: default persona
+- `meeting_system_prompt`: meeting-specific persona (digital delegate, concise & colloquial, speaks as the owner)
+- `reply_style` / `context_rounds` / `max_tokens`
 
 ---
 
-## 5. Docker
+## 🔌 Main APIs
 
-Available images:
-- **AutoDL**: <https://www.codewithgpu.com/i/lipku/livetalking/base>  
-- **UCloud**: <https://www.compshare.cn/images/4458094e-a43d-45fe-9b57-de79253befe4?referral_code=3XW3852OBmnD089hMMrtuU&ytag=GPU_GitHub_livetalking> — Supports opening any port  
-
-
----
-
-## 6. Performance
-
-- Each video stream compression consumes CPU; higher resolution means greater CPU usage. Each lip-sync inference consumes GPU
-- Concurrent sessions when not speaking depend on CPU; concurrent speaking sessions depend on GPU
-- In backend logs: `inferfps` = GPU inference frame rate, `finalfps` = final streaming frame rate. Both must be >= 25 for real-time performance
-
-### Real-Time Inference Performance
-
-| Model | GPU | FPS |
-|:------|:----|:----|
-| wav2lip256 | RTX 3060 | 60 |
-| wav2lip256 | RTX 3080Ti | 120 |
-| musetalk | RTX 3080Ti | 42 |
-| musetalk | RTX 3090 | 45 |
-| musetalk | RTX 4090 | 72 |
-
-- wav2lip256: RTX 3060 or higher recommended
-- musetalk: RTX 3080Ti or higher recommended
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/offer` | POST | Establish WebRTC connection |
+| `/human` | POST | Text/voice entry; triggers LLM + TTS (subject to interaction gating) |
+| `/api/asr` | WS | Local ASR recognition WebSocket |
+| `/api/mode` | GET/POST | Switch interaction mode (solo/meeting/recording) |
+| `/api/llm/mode` | GET/POST | Switch LLM mode (openai/agent) |
+| `/api/meeting/config` | GET/POST | Read/write meeting config |
+| `/api/speakers` | GET/POST | Voiceprint library list / register |
+| `/api/conversations/{id}/speakers/rename` | POST | Rename and register a temporary conversation speaker |
+| `/api/conversations/{id}/diarize` | GET/POST | Trigger/query offline speaker clustering refinement |
 
 ---
 
-## 7. Statement
+## 🧪 FAQ
 
-Videos developed based on this project and published on platforms such as Bilibili, WeChat Channels, and Douyin must include the LiveTalking watermark and logo.
+**Q: The digital human's speech is choppy?**
+A: Fixed. TTS uses sentence-pipeline prefetch to synthesize the next sentence during playback gaps, eliminating silent gaps.
 
----
+**Q: Cannot interrupt / the digital human interrupts itself?**
+A: Interruption is triggered by ASR VAD detecting the user speaking (`_maybe_interrupt`); the digital human's own voice is filtered via voiceprint echo suppression. If still abnormal, check `GAIN` (`web/asr/main.js`) and `self_filter_threshold` (`speaker_store.py`).
 
-## Citation
+**Q: Different speakers always labeled as the same person?**
+A: Check `session_threshold` (default 0.65) in `llm_config.json` / `speaker_store.py`; use `/api/conversations/{id}/speakers/rename` to name and register temporary speakers.
 
-If this repository helps your research or project, please cite our work.
-
-```
-@software{livetalking,
-  author = {Hengzhong Li},
-  title = {LiveTalking: Real-Time Interactive Streaming Digital Human Framework},
-  year = {2025},
-  publisher = {GitHub},
-  url = {https://github.com/lipku/livetalking}
-}
-```
+**Q: In meeting mode the digital human does not answer?**
+A: In meeting mode it only responds when addressed/asked. If you want anyone to trigger it, switch `interaction_mode` to `solo`, or add keywords to `meeting.address_keywords` / `question_patterns`.
 
 ---
 
+## 📄 License
 
-| Community | Link |
-|-----------|------|
-| Knowledge Planet | <https://t.zsxq.com/7NMyO> |
-| WeChat | wxwubug (mention for group invite) |
-| WhatsApp | <https://wa.me/livetalking> |
-| Telegram | <https://t.me/livetalking> |
-| Discord | <https://discord.gg/n5jSPCT3Uf> |
-| Email | lipku@foxmail.com |
-| WeChat Official | 数字人技术 |
-
-<img src="./assets/qrcode-wechat.jpg" align="middle" />
+Licensed under [Apache License 2.0](./LICENSE), forked from [lipku/LiveTalking](https://github.com/lipku/LiveTalking).
