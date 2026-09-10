@@ -1,0 +1,251 @@
+/* ============================================================
+   LiveTalking 简约高端风格 - 全局覆盖
+   用于统一各 iframe 页面（TTS/Avatar/管理/虚拟摄像头/ASR）的样式
+   ============================================================ */
+
+:root {
+    --min-primary: #111827;
+    --min-accent: #2563eb;
+    --min-bg: #fafafa;
+    --min-card: #ffffff;
+    --min-border: #e5e7eb;
+    --min-text: #111827;
+    --min-muted: #6b7280;
+    --min-radius: 12px;
+}
+
+/* ─── 页面背景统一为极浅灰 ─────────────────────────────── */
+body {
+    background: var(--min-bg) !important;
+    background-image: none !important;
+    color: var(--min-text) !important;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+}
+
+/* ─── 导航栏统一为白色 + 细边框 ────────────────────────── */
+.navbar-custom,
+.navbar,
+.navbar-dark,
+.navbar.navbar-dark {
+    background: var(--min-card) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--min-border) !important;
+}
+.navbar-custom .navbar-brand,
+.navbar .navbar-brand,
+.navbar-dark .navbar-brand {
+    color: var(--min-text) !important;
+}
+.navbar-custom .navbar-brand i,
+.navbar .navbar-brand i {
+    color: var(--min-accent) !important;
+}
+.navbar-custom .text-white-50,
+.navbar .text-white-50 {
+    color: var(--min-muted) !important;
+}
+
+/* 页面标题（admin/virtualcam 无导航栏） */
+.header-title,
+.page-title {
+    color: var(--min-text) !important;
+}
+.header-title i,
+.page-title i {
+    color: var(--min-accent) !important;
+}
+
+/* ─── 卡片统一为白色 + 细边框 + 轻阴影 ────────────────── */
+.glass-card {
+    background: var(--min-card) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--min-border) !important;
+    border-radius: var(--min-radius) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+}
+.glass-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+    transform: none !important;
+}
+.glass-card .card-header,
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--min-border) !important;
+    color: var(--min-text) !important;
+}
+.glass-card .card-header i,
+.card-header i {
+    color: var(--min-accent) !important;
+}
+
+/* ─── 按钮统一为简约风格 ───────────────────────────────── */
+.btn-primary-custom,
+.btn-submit,
+.btn-primary {
+    background: var(--min-primary) !important;
+    background-image: none !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+.btn-primary-custom:hover,
+.btn-submit:hover,
+.btn-primary:hover {
+    background: #374151 !important;
+    color: #fff !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-outline-custom,
+.btn-outline-primary {
+    border: 1px solid var(--min-border) !important;
+    color: var(--min-text) !important;
+    background: transparent !important;
+    border-radius: 8px !important;
+}
+.btn-outline-custom:hover,
+.btn-outline-primary:hover {
+    background: #f3f4f6 !important;
+    color: var(--min-text) !important;
+}
+
+.btn-danger-custom,
+.btn-stop {
+    background: #dc2626 !important;
+    background-image: none !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+}
+.btn-danger-custom:hover,
+.btn-stop:hover {
+    background: #b91c1c !important;
+}
+
+.btn-success-custom {
+    background: #059669 !important;
+    background-image: none !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+}
+.btn-warning-custom {
+    background: #d97706 !important;
+    background-image: none !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+}
+
+/* ─── 表单统一 ─────────────────────────────────────────── */
+.form-control,
+.form-select,
+input[type="text"],
+input[type="number"],
+input[type="password"],
+textarea,
+select {
+    border-radius: 8px !important;
+    border: 1px solid var(--min-border) !important;
+    font-size: 0.9rem !important;
+}
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--min-accent) !important;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.08) !important;
+}
+
+/* ─── 状态徽章统一 ─────────────────────────────────────── */
+.status-pending,
+.badge-pending {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+}
+.status-running,
+.badge-running {
+    background: #e0f2fe !important;
+    color: #075985 !important;
+}
+.status-completed,
+.badge-completed {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+}
+.status-failed,
+.badge-failed {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+.badge-speaking {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+}
+.badge-silent {
+    background: #f3f4f6 !important;
+    color: #6b7280 !important;
+}
+.badge-recording {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+
+/* ─── 会话卡片（admin）统一 ────────────────────────────── */
+.session-card {
+    border-left: 3px solid var(--min-accent) !important;
+}
+
+/* ─── 配置区块 / 快捷按钮（virtualcam）统一 ────────────── */
+.config-section {
+    background: #fafafa !important;
+}
+.quick-btn {
+    background: #f3f4f6 !important;
+    color: var(--min-text) !important;
+}
+.history-item {
+    background: #fafafa !important;
+}
+
+/* ─── ASR 页面（无样式）统一 ───────────────────────────── */
+.div_class_topArea,
+.div_class_recordControl,
+.div_class_buttons {
+    font-family: 'Inter', system-ui, sans-serif !important;
+    color: var(--min-text) !important;
+}
+.div_class_recordControl div[style*="border"],
+.div_class_recordControl div[style*="border:2px"] {
+    border: 1px solid var(--min-border) !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    margin-bottom: 10px !important;
+}
+.div_class_buttons button,
+#btnConnect,
+#btnStart,
+#btnStop {
+    background: var(--min-primary) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    cursor: pointer !important;
+    font-size: 0.9rem !important;
+}
+.div_class_buttons button:hover,
+#btnConnect:hover,
+#btnStart:hover,
+#btnStop:hover {
+    background: #374151 !important;
+}
+#varArea,
+#varHot {
+    border: 1px solid var(--min-border) !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    font-size: 0.9rem !important;
+}

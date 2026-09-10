@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveTalking 数字人控制台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/console.css">
+</head>
+<body>
+
+<!-- sessionid 输入框（供 ASR iframe 读取，必须保留在主文档） -->
+<input type="hidden" id="sessionid" value="">
+<!-- convid 输入框（供 ASR iframe 读取当前选中的会话 ID，避免指针不同步新建会话） -->
+<input type="hidden" id="convid" value="">
+
+<!-- 顶栏：品牌 + 连接控制 + 状态（连接全视图共用） -->
+<header class="app-header">
+    <div class="app-header-left">
+        <button class="sidebar-toggle" id="sidebarToggle" title="收起/展开侧边栏"><i class="bi bi-list"></i></button>
+        <span class="app-brand"><i class="bi bi-camera-video-fill"></i>数字人控制台</span>
+    </div>
+    <div class="app-conn-controls">
+        <span class="mode-chip" id="modeChip" title="当前交互模式（点击侧边栏切换）"><i class="bi bi-chat-dots"></i> 对话模式</span>
+        <select class="form-select form-select-sm" id="headerLlmMode" title="切换 LLM 模型" style="width:140px;">
+            <option value="openai">OpenAI LLM</option>
+            <option value="agent">Agent 服务</option>
+        </select>
+        <button class="btn-primary-custom btn-sm" id="btnStart" onclick="start()"><i class="bi bi-play-fill"></i> 连接数字人</button>
+        <button class="btn-danger-custom btn-sm" id="btnStop" onclick="stop()" style="display:none;"><i class="bi bi-stop-fill"></i> 断开</button>
+    </div>
+    <div class="app-header-right">
+        <span class="session-badge disconnected" id="statusBadge"><span class="status-dot off"></span>未连接</span>
+        <span class="sid-display" id="sessionIdDisplay">SID: -</span>
+    </div>
+</header>
+
+<div class="app-body">
+    <!-- 侧边栏：前三项 = 交互模式（点击切视图 + 切后端模式） -->
+    <aside class="sidebar" id="sidebar">
+        <nav class="sidebar-nav">
+            <button class="side-item active" data-mode="solo" title="单人对话：与数字人进行自由对话">
+                <i class="bi bi-chat-dots-fill"></i><span>对话</span>
+            </button>
+            <button class="side-item" data-mode="meeting" title="替会：听会议所有人发言，被点名/被提问必答，其余沉默">
+                <i class="bi bi-people-fill"></i><span>替会</span>
+            </button>
+            <button class="side-item" data-mode="recording" title="会议记录：纯转写+说话人标注，数字人不出声">
+                <i class="bi bi-journal-text"></i><span>记录</span>
+            </button>
+            <div class="side-divider"></div>
+            <button class="side-item" data-view="speakers"><i class="bi bi-person-badge-fill"></i><span>声纹库</span></button>
+            <button class="side-item" data-view="settings"><i class="bi bi-gear-fill"></i><span>设置</span></button>
+        </nav>
+    </aside>
+
+    <!-- 主区域 -->
+    <main class="app-main" id="appMain">
+        <div id="offerError" class="alert alert-danger" role="alert" style="display:none;"></div>
+
+        <!-- ═══ 视图1：对话（solo）═══ -->
+        <section class="view-pane active" id="view-solo">
+            <div class="view-toolbar">
+                <div class="solo-owner-hint" id="soloOwnerHint" title="对话模式下所有人都可以与数字人对话">
+                    <i class="bi bi-person-check"></i> 声纹识别已开启
+                </div>
+            </div>
+            <div class="solo-grid">
+                <div class="solo-right w-100">
+                    <div class="chat-layout">
+                        <div class="chat-sidebar">
+                            <div class="chat-sidebar-header">
+                                <button class="btn-primary-custom btn-sm w-100" onclick="newConversation()"><i class="bi bi-plus-lg"></i> 新对话</button>
+                            </div>
+                            <div id="conversationList" class="chat-conv-list"></div>
+                        </div>
+                        <div class="chat-main">
+                            <div class="chat-toolbar">
+                                <select class="form-select form-select-sm" style="width:130px;" id="chatLlmMode" title="切换 LLM 模式">
+                                    <option value="openai">OpenAI LLM</option>
+                                    <option value="agent">Agent 服务</option>
+                                </select>
+                                <button class="btn-outline-custom btn-sm" onclick="runDiarize()" title="对本会话的录音做全局说话人聚类，修正实时标签"><i class="bi bi-people"></i> 识别说话人</button>
+                                <button class="btn-outline-custom btn-sm" onclick="clearConversation()" title="清空当前会话"><i class="bi bi-trash"></i></button>
+                            </div>
+                            <div id="chatMessages" class="chat-messages">
+                                <div class="text-muted small text-center py-4">选择或新建一个会话开始对话<br><span class="text-muted">语音对话用右下角的麦克风悬浮窗</span></div>
+                            </div>
+                            <div class="chat-input-bar">
+                                <textarea id="chatInput" rows="2" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+                                <button class="btn-outline-custom btn-sm" id="voiceBtn" onclick="toggleVoiceInput()" title="语音转文字输入"><i class="bi bi-mic"></i></button>
+                                <button class="btn-primary-custom btn-sm" onclick="sendChatMessage()"><i class="bi bi-send"></i> 发送</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 视图2：替会（meeting）═══ -->
+        <section class="view-pane" id="view-meeting">
+            <div class="view-toolbar">
+                <div class="meeting-status-bar">
+                    <span class="meeting-status-item"><i class="bi bi-person-check"></i> 主用户：<b id="mtOwnerName">-</b></span>
+                    <span class="meeting-status-item"><i class="bi bi-lightning"></i> 插话：<b id="mtProactive">关</b></span>
+                    <span class="meeting-status-item"><i class="bi bi-chat-quote"></i> 我方发言：<b id="mtReplyCount">0</b></span>
+                    <span class="meeting-status-item"><i class="bi bi-people"></i> 与会人：<b id="mtSpeakerCount">0</b></span>
+                </div>
+                <div class="meeting-actions">
+                <select class="form-select form-select-sm" style="width:220px;" id="meetingConvSelect" title="选择要查看的会话"></select>
+                <button class="btn-outline-custom btn-sm" onclick="meetingManualSpeak()" title="随时让数字人代表你插话（输入要说的内容）"><i class="bi bi-megaphone"></i> 手动插话</button>
+                <button class="btn-outline-custom btn-sm" onclick="openMeetingCfg()" title="配置称呼关键词/灵敏度/主用户"><i class="bi bi-sliders"></i> 替会设置</button>
+            </div>
+            </div>
+            <div class="meeting-grid">
+                <div class="meeting-right w-100">
+                    <div class="meeting-attendees glass-card">
+                        <div class="card-header"><i class="bi bi-people"></i> 与会人</div>
+                        <div class="card-body p-2">
+                            <div id="mtAttendees" class="attendee-list">
+                                <div class="text-muted small text-center py-2">等待发言…</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="meeting-transcript glass-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-card-text"></i> 会议发言流</span>
+                            <span class="small text-muted" id="mtConvTitle"></span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="mtTranscript" class="transcript-list" style="height: 560px;">
+                                <div class="text-muted small text-center py-4">连接数字人后，会议发言将实时转写到这里</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 视图3：记录（recording）═══ -->
+        <section class="view-pane" id="view-record">
+            <div class="view-toolbar">
+                <div class="record-status-bar">
+                    <span class="meeting-status-item"><i class="bi bi-record-circle"></i> 记录模式：数字人不出声，只转写</span>
+                </div>
+                <div class="meeting-actions">
+                    <select class="form-select form-select-sm" style="width:220px;" id="recordConvSelect" title="选择要查看的会话"></select>
+                    <button class="btn-outline-custom btn-sm" onclick="runDiarize()" title="对本会话的录音做全局说话人聚类"><i class="bi bi-people"></i> 识别说话人</button>
+                    <button class="btn-primary-custom btn-sm" onclick="exportRecord('md')"><i class="bi bi-file-earmark-arrow-down"></i> 导出MD</button>
+                    <button class="btn-outline-custom btn-sm" onclick="exportRecord('txt')"><i class="bi bi-file-text"></i> 导出TXT</button>
+                </div>
+            </div>
+            <div class="record-grid">
+                <div class="record-right w-100">
+                    <div class="glass-card">
+                        <div class="card-header"><i class="bi bi-journal-text"></i> 会议转写板</div>
+                        <div class="card-body p-0">
+                            <div id="recordBoard" class="transcript-list" style="height: 640px;">
+                                <div class="text-muted small text-center py-4">选择会话查看转写记录</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 视图4：声纹库 ═══ -->
+        <section class="view-pane" id="view-speakers">
+            <div class="view-toolbar">
+                <span class="text-muted small"><i class="bi bi-person-badge-fill"></i> 声纹库：参会者的"声学身份证"。已注册者开口自动显示姓名；主用户声纹用于判定"谁能驱动数字人"。</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="glass-card h-100">
+                        <div class="card-header"><i class="bi bi-mic"></i> 注册声纹</div>
+                        <div class="card-body">
+                            <div class="small text-muted mb-2">输入姓名，对着麦克风自然说 3~6 秒。</div>
+                            <div class="d-flex gap-2 mb-3">
+                                <input type="text" class="form-control form-control-sm" id="spkNameInput" placeholder="姓名，如：王五">
+                                <button class="btn-primary-custom btn-sm text-nowrap" id="spkRecordBtn" onclick="toggleSpkRecord()"><i class="bi bi-mic"></i> 录声纹</button>
+                            </div>
+                            <div class="small text-muted">主用户（👑）：设为主用户的声纹，在对话模式下是唯一能驱动数字人的人；替会模式下其发言视为对数字人下指令。</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="glass-card h-100">
+                        <div class="card-header"><i class="bi bi-list-ul"></i> 已注册声纹</div>
+                        <div class="card-body">
+                            <div id="speakerList" class="speaker-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 视图5：设置 ═══ -->
+        <section class="view-pane" id="view-settings">
+            <ul class="nav nav-tabs console-tabs mb-3" role="tablist">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#set-conn" type="button"><i class="bi bi-broadcast"></i> 连接参数</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#set-llm" type="button"><i class="bi bi-cpu"></i> LLM 配置</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#set-meeting" type="button"><i class="bi bi-people"></i> 替会配置</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#set-tools" type="button"><i class="bi bi-tools"></i> 工具</button></li>
+            </ul>
+            <div class="tab-content">
+                <!-- 连接参数 -->
+                <div class="tab-pane fade show active" id="set-conn" role="tabpanel">
+                    <div class="glass-card">
+                        <div class="card-header"><i class="bi bi-broadcast"></i> WebRTC 连接参数</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Avatar ID</label>
+                                    <input type="text" class="form-control" id="offerAvatar" value="wav2lip256_avatar1" placeholder="wav2lip256_avatar1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">参考音频</label>
+                                    <input type="text" class="form-control" id="offerRefAudio" placeholder="zh-CN-YunxiaNeural">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">参考音频文本</label>
+                                    <input type="text" class="form-control" id="offerRefText" placeholder="参考文本（可选）">
+                                </div>
+                            </div>
+                            <div class="param-hint mt-2">点击顶栏「连接数字人」用以上参数建立连接，全视图共用。</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- LLM 配置 -->
+                <div class="tab-pane fade" id="set-llm" role="tabpanel">
+                    <div class="glass-card">
+                        <div class="card-header"><i class="bi bi-gear"></i> LLM 模式与配置</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">LLM 模式</label>
+                                <select class="form-select" id="llmConfigMode">
+                                    <option value="openai">OpenAI 兼容 LLM API（本地管理上下文/记忆）</option>
+                                    <option value="agent">Agent 服务（带上下文/记忆，类似 QwenPaw）</option>
+                                </select>
+                                <div class="param-hint mt-1">选择数字人使用的 LLM 类型</div>
+                            </div>
+                            <div id="openaiConfigSection">
+                                <h6 class="text-muted mb-3"><i class="bi bi-cloud me-1"></i>OpenAI 兼容 LLM API 配置</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">API 地址（base_url）</label>
+                                        <input type="text" class="form-control" id="openaiBaseUrl" placeholder="http://<你的vLLM主机>:8080/v1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">API Key</label>
+                                        <input type="password" class="form-control" id="openaiApiKey" placeholder="sk-...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">模型名</label>
+                                        <input type="text" class="form-control" id="openaiModel" placeholder="ds-v4-flash">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">向量模型（记忆）</label>
+                                        <input type="text" class="form-control" id="openaiEmbedModel" placeholder="bge-m3">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">重排序模型（记忆）</label>
+                                        <input type="text" class="form-control" id="openaiRerankModel" placeholder="bge-reranker-v2-m3">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="agentConfigSection" style="display:none;">
+                                <h6 class="text-muted mb-3"><i class="bi bi-diagram-3 me-1"></i>Agent 服务配置（带上下文/记忆）</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">服务地址（host）</label>
+                                        <input type="text" class="form-control" id="agentHost" placeholder="https://<你的agent服务域名>">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">端口</label>
+                                        <input type="text" class="form-control" id="agentPort" placeholder="30027">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">调用路径</label>
+                                        <input type="text" class="form-control" id="agentPath" placeholder="/api/console/chat">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Agent ID</label>
+                                        <input type="text" class="form-control" id="agentId" placeholder="<agent_id>">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Session ID（上下文）</label>
+                                        <input type="text" class="form-control" id="agentSession" placeholder="会话ID">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">响应类型</label>
+                                        <select class="form-select" id="agentResponseType">
+                                            <option value="sse">SSE 流式</option>
+                                            <option value="json">JSON</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">响应文本路径（如 text / data.text）</label>
+                                        <input type="text" class="form-control" id="agentResponsePath" placeholder="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">请求头（JSON，支持 {agent_id} 变量）</label>
+                                        <textarea class="form-control" id="agentHeaders" rows="2" placeholder='{"X-Agent-Id": "{agent_id}", "Content-Type": "application/json"}'></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">请求体模板（JSON，支持 {message} {session_id} {agent_id} 变量）</label>
+                                        <textarea class="form-control" id="agentBodyTemplate" rows="6" placeholder='{"session_id": "{session_id}", "input": [{"content": [{"type": "text", "text": "{message}"}]}]}'></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-header"><i class="bi bi-person-gear"></i> 数字人人设设置</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">System Prompt（对话模式人设）</label>
+                                <textarea class="form-control" id="personaPrompt" rows="5" placeholder="输入数字人的人设描述..."></textarea>
+                                <div class="param-hint mt-1">对话模式（solo）使用的身份设定。OpenAI 模式下生效。</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Meeting System Prompt（替会模式人设）</label>
+                                <textarea class="form-control" id="personaMeetingPrompt" rows="5" placeholder="你是…的数字分身，代表他参加会议…"></textarea>
+                                <div class="param-hint mt-1">替会模式下数字人代表主人发言的身份设定。</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">回复风格</label>
+                                <input type="text" class="form-control" id="personaStyle" placeholder="如：简短口语化，适合语音对话">
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">最大回复长度（max_tokens）</label>
+                                    <input type="number" class="form-control" id="personaMaxTokens" value="200" min="50" max="1000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">上下文轮数</label>
+                                    <input type="number" class="form-control" id="personaContextRounds" value="20" min="1" max="50">
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn-primary-custom" onclick="saveLlmConfig()"><i class="bi bi-save"></i> 保存配置</button>
+                                <button class="btn-outline-custom" onclick="loadLlmConfig()"><i class="bi bi-arrow-clockwise"></i> 重新加载</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-header"><i class="bi bi-database"></i> 记忆管理（RAG）</div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted small">对话历史向量化存储，用于长期记忆检索</span>
+                                <button class="btn-danger-custom btn-sm" onclick="clearMemory()"><i class="bi bi-trash"></i> 清空记忆</button>
+                            </div>
+                            <div id="memoryList" class="mt-2">
+                                <div class="text-muted small">暂无记忆</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 替会配置 -->
+                <div class="tab-pane fade" id="set-meeting" role="tabpanel">
+                    <div class="glass-card">
+                        <div class="card-header"><i class="bi bi-people"></i> 替会模式配置</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">主用户称呼（点名关键词之一）</label>
+                                    <input type="text" class="form-control" id="mtCfgOwnerName" placeholder="如：王总">
+                                    <div class="param-hint mt-1">会议中别人这样称呼你，数字人听到就必答。</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">主用户声纹名（owner_speaker）</label>
+                                    <input type="text" class="form-control" id="mtCfgOwnerSpeaker" placeholder="如：spk1">
+                                    <div class="param-hint mt-1">声纹库中主用户的名字。其发言 = 给数字人下指令；对话模式下只有TA能驱动数字人。</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">点名关键词（逗号分隔）</label>
+                                    <input type="text" class="form-control" id="mtCfgKeywords" placeholder="王总,李总,张工">
+                                    <div class="param-hint mt-1">发言包含任一关键词 → 视为被点名，必答。默认含主用户称呼。</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">主动插话灵敏度</label>
+                                    <select class="form-select" id="mtCfgProactive">
+                                        <option value="off">关（纯规则：点名/提问才答，推荐）</option>
+                                        <option value="low">低</option>
+                                        <option value="mid">中</option>
+                                        <option value="high">高</option>
+                                    </select>
+                                    <div class="param-hint mt-1">语义插话（议题相关时主动发言）当前版本仅预留开关。</div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <button class="btn-primary-custom" onclick="saveMeetingCfg()"><i class="bi bi-save"></i> 保存替会配置</button>
+                                <button class="btn-outline-custom" onclick="loadMeetingCfg()"><i class="bi bi-arrow-clockwise"></i> 重新加载</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 工具 -->
+                <div class="tab-pane fade" id="set-tools" role="tabpanel">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="glass-card">
+                                <div class="card-header"><i class="bi bi-soundwave"></i> TTS 语音管理</div>
+                                <div class="card-body p-0">
+                                    <div class="iframe-wrap" style="height: 560px;"><iframe src="tts/index.html"></iframe></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="glass-card">
+                                <div class="card-header"><i class="bi bi-person-bounding-box"></i> Avatar 生成</div>
+                                <div class="card-body p-0">
+                                    <div class="iframe-wrap" style="height: 560px;"><iframe src="avatar.html"></iframe></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="glass-card">
+                                <div class="card-header"><i class="bi bi-speedometer2"></i> 管理后台</div>
+                                <div class="card-body p-0">
+                                    <div class="iframe-wrap" style="height: 560px;"><iframe src="admin.html"></iframe></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="glass-card">
+                                <div class="card-header"><i class="bi bi-camera-video"></i> 虚拟摄像头</div>
+                                <div class="card-body p-0">
+                                    <div class="iframe-wrap" style="height: 560px;"><iframe src="virtualcam.html"></iframe></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ═══ 全局悬浮：数字人视频 PIP（连接后显示，全视图共用） ═══ -->
+<div class="pip-dock" id="pipDock" style="display:none;">
+    <div class="pip-header">
+        <span><i class="bi bi-camera-video"></i> 数字人</span>
+        <button class="pip-btn" id="pipToggle" title="收起/展开"><i class="bi bi-chevron-down"></i></button>
+        <button class="pip-btn" id="pipExpand" title="放大/缩小"><i class="bi bi-arrows-fullscreen"></i></button>
+    </div>
+    <div class="pip-body" id="pipBody">
+        <div class="video-container">
+            <span class="video-overlay" id="videoOverlay">未连接</span>
+            <video id="video" autoplay playsinline muted controls></video>
+        </div>
+    </div>
+    <audio id="audio" autoplay></audio>
+</div>
+
+<!-- ═══ 全局悬浮：ASR 语音采集坞（连接后显示，全视图共用，只此一份） ═══ -->
+<div class="asr-dock" id="asrDock" style="display:none;">
+    <div class="asr-dock-header">
+        <span><i class="bi bi-mic-fill"></i> 语音采集</span>
+        <button class="pip-btn" id="asrToggle" title="收起/展开"><i class="bi bi-chevron-down"></i></button>
+    </div>
+    <div class="asr-dock-body" id="asrDockBody">
+        <iframe src="asr/index.html" id="asrIframe" style="height: 300px;" allow="microphone; camera"></iframe>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/console.js"></script>
+<script src="js/app.js"></script>
+<script src="js/webrtc.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/meeting.js"></script>
+<script src="js/record.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/speaker.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+__pycache__/
+build/
+*.egg-info/
+*.so
+*.mp4
+
+tmp*
+trial*/
+
+data
+data_utils/face_tracking/3DMM/*
+data_utils/face_parsing/79999_iter.pth
+
+pretrained
+*.mp4
+.DS_Store
+workspace/log_ngp.txt
+.idea
+models/
+*.log
+dist
+
+# ─── 本地运行时环境（不应上传）─────────────
+.venv/
+.env
+.trae/
+
+# ─── 含敏感信息的配置文件（用 *.example 模板代替）─────────────
+llm_config.json
+persona.json
+
+# ─── 本地页面（不提交）─────────────
+web/entry.html

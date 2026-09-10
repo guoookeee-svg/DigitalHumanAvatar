@@ -1,0 +1,46 @@
+{
+  "mode": "openai",
+  "openai": {
+    "base_url": "http://<你的vLLM主机>:8080/v1",
+    "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
+    "model": "ds-v4-flash",
+    "embed_model": "bge-m3",
+    "rerank_model": "bge-reranker-v2-m3"
+  },
+  "agent": {
+    "host": "https://<你的agent服务域名>",
+    "port": "30027",
+    "path": "/api/console/chat",
+    "agent_id": "<agent_id>",
+    "session_id": "<session_id>",
+    "response_type": "sse",
+    "response_text_path": "text",
+    "headers": {
+      "X-Agent-Id": "{agent_id}",
+      "Content-Type": "application/json"
+    },
+    "body_template": {
+      "session_id": "{session_id}",
+      "user_id": "<user_id>",
+      "channel": "acp",
+      "input": [
+        {
+          "content": [
+            {
+              "type": "text",
+              "text": "{message}"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "interaction_mode": "solo",
+  "meeting": {
+    "owner_name": "<owner_name>",
+    "owner_speaker": "<owner_speaker>",
+    "address_keywords": [],
+    "question_patterns": [],
+    "proactive_level": "off"
+  }
+}
