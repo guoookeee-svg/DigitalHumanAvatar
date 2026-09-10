@@ -179,6 +179,83 @@ python app.py
 
 ---
 
+## 🧭 从零部署完整步骤
+
+以下是从一台干净机器到可对话数字人的完整流程（GPU 服务器）：
+
+### 1. 拉取代码 / 准备目录
+
+```bash
+# 克隆本仓库
+git clone <你的仓库地址> LiveTalking
+cd LiveTalking
+
+# 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+```
+
+### 2. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+> **GPU 说明**：若 `torch` 安装的版本不带 CUDA 或装错版本，请按你的 CUDA 版本重新安装，例如：
+> ```bash
+> pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+> ```
+> （`nvidia-smi` 查看 CUDA 版本，选择对应的 cu 版本）
+
+### 3. 配置环境变量
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入：
+#   LLM_BASE_URL   → 你的 vLLM 服务地址（提供 /v1/chat/completions）
+#   LLM_API_KEY    → 对应 API Key
+#   LLM_MODEL      → 模型名（如 ds-v4-flash）
+#   CUDA_VISIBLE_DEVICES → 用哪张 GPU
+```
+
+### 4. 放置模型与素材
+
+- 把 `wav2lip.pth` 放到 `models/wav2lip.pth`
+- 把形象素材（如 `wav2lip256_avatar1/`）放到 `data/avatars/`
+- FunASR 模型不用手动放，首次运行会自动下载到 `MODELSCOPE_CACHE`
+- TTS 参考音频 `ref_audio.wav`（16kHz 单声道）放到 `REF_FILE` 指定路径
+
+### 5. 准备外部服务（可选）
+
+- **GPT-SoVITS TTS**：单独部署，放在本仓库上一级目录 `../GPT-SoVITS`（`start_new.sh` 会自动拉起，端口 9880）。
+- **vLLM LLM 服务**：需已可用，地址填进 `.env` 的 `LLM_BASE_URL`。
+
+### 6. 启动
+
+```bash
+./start_new.sh          # 一键启动（自动加载 .env、拉起 GPT-SoVITS、健康检查）
+```
+
+等待 GPT-SoVITS 加载完成（约 20~60s），然后浏览器打开：
+
+```
+http://<服务器IP>:8010/console.html
+```
+
+> **注意**：若不是用显卡跑推理（如用 CPU 或云 CPU 机器），ASR/声纹/嘴型推理会非常慢或无法运行，建议使用 NVIDIA GPU。
+
+### 部署检查清单
+
+- [ ] `.venv` 已创建并 `pip install -r requirements.txt`
+- [ ] `.env` 已配置 `LLM_BASE_URL` / `LLM_API_KEY` / `CUDA_VISIBLE_DEVICES`
+- [ ] `models/wav2lip.pth` 已放置
+- [ ] 形象素材在 `data/avatars/`
+- [ ] TTS 参考音频 `ref_audio.wav` 已放置（使用 GPT-SoVITS 时）
+- [ ] GPT-SoVITS 已部署到 `../GPT-SoVITS`（使用 GPT-SoVITS 时）
+- [ ] `nvidia-smi` 能看到 GPU，且 CUDA 可用（`python -c "import torch;print(torch.cuda.is_available())"` 为 True）
+
+---
+
 ## ⚙️ 配置说明
 
 ### `.env`（环境变量）
